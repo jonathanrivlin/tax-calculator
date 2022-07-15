@@ -1,9 +1,11 @@
 from typing import Any, Generator, List, Union
 from flask import Flask
 
+
 app = Flask(__name__)
 
 tax_level = List[Union[int, float]]
+
 
 PENSION_WORKER_DEDUCT_RATE: float = 0.06
 CREDIT_POINT_VALUE: int = 223
@@ -17,8 +19,25 @@ def level_gen(levels: list) -> Generator[tax_level, None, None]:
         yield level
 
 
+def invalid_value(num):
+    try:
+        float(num)
+        return False
+
+    except ValueError:
+        return True
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return {"Detail": "Unknown Route"}
+
+
 @app.route("/calc/<user_income>/<user_credit_points>")
 def calc_api(user_income, user_credit_points) -> dict:
+
+    if invalid_value(user_income) or invalid_value(user_credit_points):
+        return {"Detail": "Invalid Value"}
 
     omitted: Union[int, float] = 0
     tax: Union[int, float] = 0
@@ -42,8 +61,8 @@ def calc_api(user_income, user_credit_points) -> dict:
 
 
 
-def tax_to_deduct_from_salary(income: Union[int, float],
-                              tax_levels: Generator[tax_level, None, None], omitted_value, tax_value, credit_points: Union[int, float] = 0)\
+def tax_to_deduct_from_salary(income: Union[int, float], tax_levels: Generator[tax_level, None, None],
+                               omitted_value, tax_value, credit_points: Union[int, float] = 0)\
         -> Union[int, float]:
 
     current_level: tax_level = next(tax_levels)
@@ -62,6 +81,7 @@ def tax_to_deduct_from_salary(income: Union[int, float],
 
     tax_value += (income - omitted_value) * current_level[1] - (credit_points * CREDIT_POINT_VALUE)
     tax_value = round(tax_value)
+
     if tax_value >= 0:
         return tax_value
 
